@@ -7,7 +7,7 @@ import random
 import scipy.io
 import matplotlib.pyplot as plt
 '''
-images size is 480 x 640 x 3,and I downsize the images for accelerate the learning to h x w x 3.
+images size is 480 x 640 x 3,and I downsize the images for accelerate the learning to h x w x 1.
 there are two kinds of partition:  illumination and in/outdoor
 you can choose images with good illumination(1025 images) or outdoor(829 images) for better face synthesis
 total amount of images is 2662
