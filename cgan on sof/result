@@ -3,3 +3,6 @@ however at the very end , the mode collapses and the G loss is always almost 0,
 while D loss converges periodically after a sudden huge to 1e+3 or 1e+4
 After I normalise the image value range to 0-1, then the D loss down to about 7 hundreds , very high yet.
 And the generated images still with many noises.
+
+
+As for Cgan with conv layer, I tried with NVidia Mx150 but there was a warning ," always exceeds 10% of system memory". 
