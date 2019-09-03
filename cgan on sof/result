@@ -1,7 +1,7 @@
-happy emotion synthesis at first 20 epochs through fc NN and gray images ,
-however at the very end , the mode collapses and the G loss is always almost 0,
+happy emotion synthesis at first 20 epochs through fc NN and gray images is good,
+however, at the very end , the mode collapses and the G loss(traditional cross entropy loss) is always almost 0,
 while D loss converges periodically after a sudden huge rise to 1e+3 or 1e+4
-After I normalise the image value range to 0-1, then the D loss down to about 7 hundreds , very high yet.
+After I normalised the image value range to 0-1, then the D loss down to about 7 hundreds , but still too high.
 And the generated images still with many noises.
 
 
