@@ -8,7 +8,7 @@ import scipy.io
 import tensorflow as tf 
 import matplotlib.pyplot as plt
 '''
-images size is 480 x 640 x 3,and I downsize the images for accelerate the learning to 48*4 x 64*4 x 3.
+images size is 480 x 640 x 3,and I downsize the images for accelerate the learning to h x w x 3.
 there are two kinds of partition:  illumination and in/outdoor
 I choose good illumination(1025 images) or outdoor(829 images) for better face synthesis
 '''
