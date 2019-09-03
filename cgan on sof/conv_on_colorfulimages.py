@@ -45,8 +45,8 @@ para_D = [D_W1, D_W2, D_b1, D_b2,k1_d,k2_d]
 G_W1 = tf.Variable(xavier_init([Z_dim+classes, 1024]))
 G_b1 = tf.Variable(tf.zeros(shape=[1024]))
 
-G_W2 = tf.Variable(xavier_init([1024+classes, 128*2500]))
-G_b2 = tf.Variable(tf.zeros(shape=[128*2500]))
+G_W2 = tf.Variable(xavier_init([1024+classes, 8*h*w]))
+G_b2 = tf.Variable(tf.zeros(shape=[8*h*w]))
 
 #[kernel h, kernel w, out chanels, in chanels]
 k1_g = tf.Variable(tf.random.normal(shape=[5, 5, 64,  128+classes ],stddev=0.02))
