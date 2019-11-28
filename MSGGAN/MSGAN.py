@@ -224,11 +224,11 @@ def summarize_performance(ix, g_model,d_model, latent_dim, n_samples=16):
 			pyplot.axis('off')
 			pyplot.imshow(X[i][j])
 		num = pow(2,7-i)
-		filename = 'C:/Users/ZhenjuYin/Documents/yolo/msgan/'+label+'/gan_generated_plot_e%d' % (num) + '_ %d.png' %(ix)
+		filename = 'C:/Users/Documents/yolo/msgan/'+label+'/gan_generated_plot_e%d' % (num) + '_ %d.png' %(ix)
 		pyplot.savefig(filename)
 		pyplot.close()
 	# save the generator model tile file
-	filename = 'C:/Users/ZhenjuYin/Documents/yolo/msgan/'+label+'/gan_generator_model_%d.h5' % (ix)
+	filename = 'C:/Users/Documents/yolo/msgan/'+label+'/gan_generator_model_%d.h5' % (ix)
 	g_model.save(filename)
 
 
@@ -258,12 +258,12 @@ label ='head'
 latent_dim = 256
 n_blocks=6
 
-path_object7 = np.load('C:/Users/ZhenjuYin/Documents/yolo/'+label+'128.npy', allow_pickle=True)
-path_object6 = np.load('C:/Users/ZhenjuYin/Documents/yolo/'+label+'64.npy', allow_pickle=True)
-path_object5 = np.load('C:/Users/ZhenjuYin/Documents/yolo/'+label+'32.npy', allow_pickle=True)
-path_object4 = np.load('C:/Users/ZhenjuYin/Documents/yolo/'+label+'16.npy', allow_pickle=True)
-path_object3 = np.load('C:/Users/ZhenjuYin/Documents/yolo/'+label+'8.npy', allow_pickle=True)
-path_object2 = np.load('C:/Users/ZhenjuYin/Documents/yolo/'+label+'4.npy', allow_pickle=True)
+path_object7 = np.load('C:/Users/Documents/yolo/'+label+'128.npy', allow_pickle=True)
+path_object6 = np.load('C:/Users/Documents/yolo/'+label+'64.npy', allow_pickle=True)
+path_object5 = np.load('C:/Users/Documents/yolo/'+label+'32.npy', allow_pickle=True)
+path_object4 = np.load('C:/Users/Documents/yolo/'+label+'16.npy', allow_pickle=True)
+path_object3 = np.load('C:/Users/Documents/yolo/'+label+'8.npy', allow_pickle=True)
+path_object2 = np.load('C:/Users/Documents/yolo/'+label+'4.npy', allow_pickle=True)
 
 g_model = define_generator(latent_dim )
 print("1")
