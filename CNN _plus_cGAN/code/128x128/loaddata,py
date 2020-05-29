@@ -1,0 +1,124 @@
+#!python
+#!/usr/bin/env python
+from scipy.io import loadmat
+import os,glob
+import cv2
+from tensorflow.python.client import device_lib
+from skimage import io
+
+from numpy.random import randn
+from numpy.random import randint
+import numpy as np
+from skimage import io
+from skimage import transform
+from matplotlib import pyplot
+
+
+
+
+def loaddata():
+    path = 'C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/CVPR17_Annotations.mat'
+    os.chdir('C:/Users/ZhenjuYin/Documents/Python Scripts/emotic')
+    x = loadmat(path)
+    '''
+    a = x["test"][0][100][4][0] # no.1 image
+    fn =x['test'][0][1][0]#filename
+    print(fn)
+    b1 = a[0][0] # no.1 body bbox
+    
+    b2 = a[0][1] # kind
+    b3 = a[0][2] # kind
+    b4 = a[0][3] # continous kind body1 body2 whole
+    print(b4)
+    b5 = a[0][4] # combined continous kind
+    b6 = a[0][5] # gender
+    b = a[0][6] # age
+
+    print(b6)
+    print(b5)
+ '''
+
+   
+    data=[]
+    filename =[]
+    box=[]
+    value =[]
+    i=0
+    for obj in x["test"][0]:
+        
+        #name of img
+        fn = obj[0][0]
+        #######print(fn)
+        folder = obj[1][0]
+        #######print(folder)
+        #####persons in the image
+        body = obj[4][0]
+        
+        for person in body:
+            ########print(person)
+            #bbox
+            bbox = person[0][0]
+            
+            box.append(bbox)
+            filename.append(fn)
+            #value
+            v = person[4][0]
+            '''
+            v1 = v[0][0][0]
+            v2 = v[1][0][0]
+            v3 = v[2][0][0]
+            '''
+            value.append(v)
+            print(v)
+             
+            image = cv2.imread(folder+'/'+fn,cv2.IMREAD_UNCHANGED)
+            i=i+1
+            print(i)
+            xmin = int(bbox[0])
+            if xmin<0: xmin=0
+            ymin = int(bbox[1])
+            if ymin<0: ymin=0
+            xmax = int(bbox[2])
+            ymax = int(bbox[3])
+            ########print(bbox)
+            img =[]
+            
+            if len(image.shape) ==2:
+                img = image[ymin:ymax,xmin:xmax]
+            else:
+                img = image[ymin:ymax,xmin:xmax,:]
+                
+            #######print(img.shape)
+            resized = cv2.resize(img, (64,64), interpolation = cv2.INTER_AREA)
+            name = 'C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/emodb_small/body/%04d.jpg'   %(i)
+            cv2.imwrite(name, resized)
+
+            data.append((folder+'/'+fn,box,v, name,v))
+    ########print(i)
+    #np.save('C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/train.npy',data)  
+    #c = np.load('C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/test.npy',allow_pickle=True)  
+    
+    c = 1
+
+loaddata() 
+'''
+c = np.load('C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/test.npy',allow_pickle=True)  
+print(c[0][4][0][1][0][0])
+print(c.shape)
+
+data =[]
+i=0
+valence = []
+for img in c:
+    image = cv2.imread(img[3],cv2.IMREAD_UNCHANGED)
+    data.append((image - 127.5) / 127.5)
+    i=i+1
+    v = img[4][0][1][0][0]# valence value
+    valence.append(v)
+
+
+valence=np.array(valence)       
+valence=valence.astype(np.float32)/10.
+'''
+
+
