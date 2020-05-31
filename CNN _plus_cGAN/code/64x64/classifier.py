@@ -1,3 +1,10 @@
+#################################################################################
+#  the architechiture of this model is like
+#   conv 3x3, 2, output 32
+#   conv 3x3, 1, output 64
+#   droupout and maxpooling 2x2, stride 2
+#   dense for a,v,d
+
 from __future__ import print_function, division
 
 from tensorflow.keras.models import model_from_json
@@ -52,7 +59,7 @@ class classifier():
 
         model.add(Conv2D(32, kernel_size=3, activation="relu",strides=2, padding="same"))
 
-        #model.add(Conv2D(32, kernel_size=3,activation="relu", strides=2, padding="same"))
+        
 
         model.add(Conv2D(64, kernel_size=3,activation="relu", strides=1, padding="same"))
         
