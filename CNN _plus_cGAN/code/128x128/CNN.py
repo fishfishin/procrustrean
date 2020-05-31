@@ -54,7 +54,7 @@ class classifier():
 
         model.add(Conv2D(32, kernel_size=3, activation="relu",strides=2, padding="same"))
 
-        #model.add(Conv2D(32, kernel_size=3,activation="relu", strides=2, padding="same"))
+        model.add(Conv2D(32, kernel_size=3,activation="relu", strides=2, padding="same"))
 
         model.add(Conv2D(64, kernel_size=3,activation="relu", strides=1, padding="same"))
         
