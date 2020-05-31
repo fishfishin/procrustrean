@@ -12,7 +12,13 @@ import matplotlib.pyplot as plt
 import tensorflow.keras.backend as K
 import numpy as np
 
-
+#################################################################################
+#  the architechiture of this model is like
+#   conv 3x3, 2, output 32
+#   conv 3x3, 2, output 32
+#   conv 3x3, 1, output 64
+#   droupout and maxpooling 2x2, stride 2
+#   dense for a,v,d
 
 def mean_loss(y_true, y_pred):
 
