@@ -41,7 +41,7 @@ class CGAN():
         self.discriminator = self.build_discriminator()
 
         
-        self.discriminator.compile(loss=['binary_crossentropy', tf.keras.losses.LogCosh(), tf.keras.losses.LogCosh(), tf.keras.losses.LogCosh()],
+        self.discriminator.compile(loss=['binary_crossentropy', tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh()],
             optimizer=self.optimizer)
 
         # Build the generator
@@ -69,7 +69,7 @@ class CGAN():
         # Trains the generator to fool the discriminator
         opt = Adam(lr=0.0002, beta_1=0.5)
         self.combined1 = Model([in_lat,l1,l2,l3], [valid,a,v,d])
-        self.combined1.compile(loss=['binary_crossentropy', tf.keras.losses.LogCosh(), tf.keras.losses.LogCosh(), tf.keras.losses.LogCosh()],
+        self.combined1.compile(loss=['binary_crossentropy', tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh()],
             optimizer=opt)  
         '''
         self.combined2 = Model([in_lat, imgs],[a,v,d])
@@ -203,12 +203,15 @@ class CGAN():
 
         #a = Dense(64, activation="relu")(features)
         a = Dense(1, activation="sigmoid")(features)
+        a = Lambda(lambda x: x * 9.+1)(a) 
 
         #v = Dense(64, activation="relu")(features)
         v = Dense(1, activation="sigmoid")(features)
+        v = Lambda(lambda x: x * 9.+1)(v) 
 
         #d = Dense(64, activation="relu")(features)
         d = Dense(1, activation="sigmoid")(features)
+        d = Lambda(lambda x: x * 9.+1)(d) 
         
 
         return Model(img, [validity,a,v,d])
@@ -302,6 +305,7 @@ class CGAN():
             for j in range(c):
                 axs[i,j].imshow(gen_imgs.astype(np.uint8)[cnt,:,:,:])
                 axs[i,j].axis('off')
+                axs[i,j].set_title('a:%d,v:%d,d:%d' %(a[cnt],v[cnt],d[cnt]))
                 cnt += 1
         fig.savefig("C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/class/cgan/imagesnew/%d.png" % epoch)
         plt.close()
