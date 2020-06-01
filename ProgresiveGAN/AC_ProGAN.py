@@ -73,7 +73,7 @@ class PixelNormalization(Layer):
     def compute_output_shape(self, input_shape):
         return input_shape
 
-class CGAN():
+class pGAN():
     def __init__(self):
         # Input shape
         self.img_rows = 64
@@ -521,7 +521,7 @@ class CGAN():
 
 
 if __name__ == '__main__':
-    cgan = CGAN()
+    pgan = pGAN()
     batch = [ 16, 16, 8, 4]
     epochs = [8, 8, 10, 10] 
     dataset = np.load('face_image.npy',allow_pickle=True)
@@ -530,4 +530,4 @@ if __name__ == '__main__':
     #cgan.discriminator.load_weights("C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/class/cgan/discriminatorpro_weights.h5")
     #cgan.generator.load_weights("C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/class/cgan/generatorpro_weights.h5")
     #cgan.classifier.load_weights("C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/class/saved/model64_weights.h5")
-    cgan.train(dataset, label,epochs,epochs, batch)
+    pgan.train(dataset, label,epochs,epochs, batch)
