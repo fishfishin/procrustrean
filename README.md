@@ -8,3 +8,5 @@ The basic architecture derives from the Progressive GAN [Progressive Growing of 
 
 ## Implementation
 The approach is implemented on Python and using Keras.
+
+## Training Dataset
