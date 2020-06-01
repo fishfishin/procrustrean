@@ -502,14 +502,14 @@ class CGAN():
                 axs[i,j].axis('off')
                 axs[i,j].set_title('a:%d,v:%d,d:%d' %(a[cnt],v[cnt],d[cnt]))
                 cnt += 1
-        fig.savefig('C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/class/cgan/imagespro/'+name+'.png')
+        fig.savefig(name+'.png')
         plt.close()
 
     def save_model(self,model, model_name):
 
         def save(model, model_name):
-            model_path = "C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/class/cgan/imagespro/%spro.json" % model_name
-            weights_path = "C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/class/cgan/imagespro/%spro_weights.h5" % model_name
+            model_path = "%spro.json" % model_name
+            weights_path = "%spro_weights.h5" % model_name
             options = {"file_arch": model_path,
                         "file_weight": weights_path}
             #json_string = model.to_json()
