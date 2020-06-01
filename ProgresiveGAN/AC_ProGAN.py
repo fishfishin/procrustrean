@@ -376,11 +376,11 @@ class CGAN():
                 if isinstance(layer, WeightedSum):
                     K.set_value(layer.alpha, alpha)
 
-    def train_epoch(self,g_model,d_model,gan_model, data, epochs, batch_size=128, update=False, sample_interval=40):
+    def train_epoch(self,g_model,d_model,gan_model, data, value, epochs, batch_size=128, update=False, sample_interval=40):
 
         # Load the dataset
 
-        value= np.load('C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/face_value.npy',allow_pickle=True)
+        #value= np.load('C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/face_value.npy',allow_pickle=True)
         X_train = data
         X_train  = (X_train .astype(np.float32) - 127.5) / 127.5
         # Configure inputs
@@ -447,7 +447,7 @@ class CGAN():
             images_list.append(new_image)
         return np.asarray(images_list)
 
-    def train(self, e_norm, e_fadein, batch_size):
+    def train(self, dataset, label,e_norm, e_fadein, batch_size):
 	
         g_normal, d_normal, gan_normal = self.generator[0][0], self.discriminator[0][0], self.gan[0][0]
         dataset = np.load('C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/face_image.npy',allow_pickle=True)
@@ -456,7 +456,7 @@ class CGAN():
         scaled_data = self.scale_dataset(dataset, gen_shape[1:])
         print('Scaled Data', scaled_data.shape)
 
-        self.train_epoch(g_normal, d_normal, gan_normal, scaled_data, e_norm[0], batch_size[0])
+        self.train_epoch(g_normal, d_normal, gan_normal, scaled_data,label, e_norm[0], batch_size[0])
         for i in range(1, len(self.generator)):
         # retrieve models for this level of growth
             [g_normal, g_fadein] = self.generator[i]
@@ -468,7 +468,7 @@ class CGAN():
             print('Scaled Data', scaled_data.shape)
             # train fade-in models for next level of growth
 
-            self.train_epoch(g_fadein, d_fadein, gan_fadein, scaled_data, e_fadein[i], batch_size[i], True)
+            self.train_epoch(g_fadein, d_fadein, gan_fadein, scaled_data, label, e_fadein[i], batch_size[i], True)
             name = '%03dx%03d-%s_g_model' % (gen_shape[1], gen_shape[2], 'faded')
             self.save_model(g_fadein,name)
             name = '%03dx%03d-%s_d_model' % (gen_shape[1], gen_shape[2], 'faded')
@@ -476,7 +476,7 @@ class CGAN():
             
             self.sample_images(name, g_fadein)
 
-            self.train_epoch(g_normal, d_normal, gan_normal, scaled_data, e_norm[i], batch_size[i])
+            self.train_epoch(g_normal, d_normal, gan_normal, scaled_data, label,e_norm[i], batch_size[i])
             name = '%03dx%03d-%s_g_model' % (gen_shape[1], gen_shape[2], 'tuned')
             self.save_model(g_normal,name)
             name = '%03dx%03d-%s_d_model' % (gen_shape[1], gen_shape[2], 'tuned')
@@ -524,8 +524,10 @@ if __name__ == '__main__':
     cgan = CGAN()
     batch = [ 16, 16, 8, 4]
     epochs = [8, 8, 10, 10] 
+    dataset = np.load('face_image.npy',allow_pickle=True)
+    label = np.load('face_value.npy',allow_pickle=True)
 
     #cgan.discriminator.load_weights("C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/class/cgan/discriminatorpro_weights.h5")
     #cgan.generator.load_weights("C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/class/cgan/generatorpro_weights.h5")
     #cgan.classifier.load_weights("C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/class/saved/model64_weights.h5")
-    cgan.train(epochs,epochs, batch)
+    cgan.train(dataset, label,epochs,epochs, batch)
