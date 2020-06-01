@@ -73,7 +73,7 @@ class PixelNormalization(Layer):
     def compute_output_shape(self, input_shape):
         return input_shape
 
-class pGAN():
+class CGAN():
     def __init__(self):
         # Input shape
         self.img_rows = 64
@@ -187,18 +187,24 @@ class pGAN():
         # define straight-through model
         features = d
         validity = Dense(1, activation="sigmoid")(features)
+        
         a = Dense(1, activation="sigmoid")(features)
         a = Lambda(lambda x: x * 9.+1)(a) 
         v = Dense(1, activation="sigmoid")(features)
         v = Lambda(lambda x: x * 9.+1)(v)
         da = Dense(1, activation="sigmoid")(features)
         da = Lambda(lambda x: x * 9.+1)(da)
+        '''
+        a = Dense(10, activation="softmax")(features)
+        v = Dense(10, activation="softmax")(features)
+        da = Dense(10, activation="softmax")(features)
+        '''
         out_class = [validity,a,v,da] 
 
         model1 = Model(image, out_class)
 
         model1.compile(loss=[wasserstein_loss, tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh()],
-                    optimizer=Adam(lr=0.001, beta_1=0, beta_2=0.99, epsilon=10e-8))
+                    optimizer=Adam(lr=0.0001, beta_1=0, beta_2=0.99, epsilon=10e-8))
 
         downsample = AveragePooling2D()(image)
         block_old = old_model.layers[1](downsample)
@@ -211,12 +217,18 @@ class pGAN():
             d = old_model.layers[i](d)
         feature = d
         validity = Dense(1, activation="sigmoid")(feature)
+        
         a = Dense(1, activation="sigmoid")(feature)
         a = Lambda(lambda x: x * 9.+1)(a) 
         v = Dense(1, activation="sigmoid")(feature)
         v = Lambda(lambda x: x * 9.+1)(v)
         da = Dense(1, activation="sigmoid")(feature)
         da = Lambda(lambda x: x * 9.+1)(da)
+        '''
+        a = Dense(10, activation="softmax")(features)
+        v = Dense(10, activation="softmax")(features)
+        da = Dense(10, activation="softmax")(features)
+        '''
         out_class = [validity,a,v,da] 
 
         model2 = Model(image, out_class)
@@ -225,9 +237,9 @@ class pGAN():
                     optimizer=Adam(lr=0.001, beta_1=0, beta_2=0.99, epsilon=10e-8))
         return [model1, model2]
 
-    def build_discriminator(self,n_blocks=4):
+    def build_discriminator(self,n_blocks=5):
 
-        img = Input(shape=(8,8,3))     
+        img = Input(shape=(4,4,3))     
         init = RandomNormal(stddev=0.02)
         const = max_norm(1.0)
         d = Conv2D(128, (1,1), padding='same', kernel_initializer=init, kernel_constraint=const)(img)       
@@ -243,13 +255,18 @@ class pGAN():
         num2 = np.asarray([1.]).astype(np.float32)
         features = d
         validity = Dense(1, activation="sigmoid")(features)
+        
         a = Dense(1, activation="sigmoid")(features)
         a = Lambda(lambda x: x * 9.+1)(a) 
         v = Dense(1, activation="sigmoid")(features)
         v = Lambda(lambda x: x * 9.+1)(v)
         da = Dense(1, activation="sigmoid")(features)
         da = Lambda(lambda x: x * 9.+1)(da)
-
+        '''
+        a = Dense(10, activation="softmax")(features)
+        v = Dense(10, activation="softmax")(features)
+        da = Dense(10, activation="softmax")(features)
+        '''
         out_class = [validity,a,v,da] 
         model = Model(img, out_class)
         model_list=list()
@@ -291,21 +308,22 @@ class pGAN():
         return [model1, model2]
 
 
-    def build_generator(self,n_blocks=4):
-   
+    def build_generator(self,n_blocks=5):
+
+        dep = 4
         n = Input(shape=(self.latent_dim,))
-        noise = Dense(8*8*(256-64))(n)
+        noise = Dense(dep*dep*128)(n)
         noise = LeakyReLU(alpha=0.2)(noise)
-        noise = Reshape((8,8,(256-64)))(noise)       
+        noise = Reshape((dep,dep,128))(noise)       
         l1 = Input(shape=(1,))
         l2 = Input(shape=(1,))
         l3 = Input(shape=(1,))        
-        label1= Dense(8*8)(Flatten()(Embedding(10, 60)(l1)))
-        label2= Dense(8*8)(Flatten()(Embedding(10, 60)(l2)))
-        label3= Dense(8*8)(Flatten()(Embedding(10, 60)(l3)))
-        label1 = Reshape((8,8,1))(label1)
-        label2 = Reshape((8,8,1))(label2)
-        label3 = Reshape((8,8,1))(label3)
+        label1= Dense(dep*dep*2)(Flatten()(Embedding(10, 50)(l1)))
+        label2= Dense(dep*dep*2)(Flatten()(Embedding(10, 50)(l2)))
+        label3= Dense(dep*dep*2)(Flatten()(Embedding(10, 50)(l3)))
+        label1 = Reshape((dep,dep,2))(label1)
+        label2 = Reshape((dep,dep,2))(label2)
+        label3 = Reshape((dep,dep,2))(label3)
 
         model_input = Concatenate(axis=3)([noise, label1,label2,label3])
      
@@ -376,11 +394,11 @@ class pGAN():
                 if isinstance(layer, WeightedSum):
                     K.set_value(layer.alpha, alpha)
 
-    def train_epoch(self,g_model,d_model,gan_model, data, value, epochs, batch_size=128, update=False, sample_interval=40):
+    def train_epoch(self,g_model,d_model,gan_model, data,label, epochs, batch_size=128, update=False, sample_interval=40):
 
         # Load the dataset
 
-        #value= np.load('C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/face_value.npy',allow_pickle=True)
+        value= label 
         X_train = data
         X_train  = (X_train .astype(np.float32) - 127.5) / 127.5
         # Configure inputs
@@ -434,7 +452,7 @@ class pGAN():
             in_lat = np.random.normal(0, 1, (batch_size, self.latent_dim))
             
             g_loss1 = gan_model.train_on_batch([in_lat,fake_label1,fake_label2,fake_label3], [valid_g,fake_label1,fake_label2,fake_label3])
-            print ("%d [D loss: %.4f, label: %.4f%%] [G loss: %.4f,label: %.4f%%] " % (i, d_loss[0],100*d_loss[1], g_loss1[0],100*g_loss1[1]))
+            print ("%d [D loss: %.4f, label: %.4f] [G loss: %.4f,label: %.4f] " % (i, d_loss[0],100*d_loss[1], g_loss1[0],100*g_loss1[1]))
                 # g_loss1 = self.combined1.train_on_batch([in_lat,imgs], [valid,arousal, valence,dominance])
 
                 
@@ -447,16 +465,21 @@ class pGAN():
             images_list.append(new_image)
         return np.asarray(images_list)
 
-    def train(self, dataset, label,e_norm, e_fadein, batch_size):
+    def train(self, dataset, label, e_norm, e_fadein, batch_size):
 	
         g_normal, d_normal, gan_normal = self.generator[0][0], self.discriminator[0][0], self.gan[0][0]
-        dataset = np.load('C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/face_image.npy',allow_pickle=True)
+        
 
         gen_shape = g_normal.output_shape
         scaled_data = self.scale_dataset(dataset, gen_shape[1:])
         print('Scaled Data', scaled_data.shape)
 
-        self.train_epoch(g_normal, d_normal, gan_normal, scaled_data,label, e_norm[0], batch_size[0])
+        self.train_epoch(g_normal, d_normal, gan_normal, scaled_data, label,e_norm[0], batch_size[0])
+        name = '%03dx%03d-%s_g_model' % (gen_shape[1], gen_shape[2], 'faded')
+        self.save_model(g_normal,name)
+        name = '%03dx%03d-%s_d_model' % (gen_shape[1], gen_shape[2], 'faded')
+        self.save_model(d_normal,name)
+        self.sample_images(name, g_normal)
         for i in range(1, len(self.generator)):
         # retrieve models for this level of growth
             [g_normal, g_fadein] = self.generator[i]
@@ -468,7 +491,7 @@ class pGAN():
             print('Scaled Data', scaled_data.shape)
             # train fade-in models for next level of growth
 
-            self.train_epoch(g_fadein, d_fadein, gan_fadein, scaled_data, label, e_fadein[i], batch_size[i], True)
+            self.train_epoch(g_fadein, d_fadein, gan_fadein, scaled_data, label,e_fadein[i], batch_size[i], True)
             name = '%03dx%03d-%s_g_model' % (gen_shape[1], gen_shape[2], 'faded')
             self.save_model(g_fadein,name)
             name = '%03dx%03d-%s_d_model' % (gen_shape[1], gen_shape[2], 'faded')
@@ -476,7 +499,7 @@ class pGAN():
             
             self.sample_images(name, g_fadein)
 
-            self.train_epoch(g_normal, d_normal, gan_normal, scaled_data, label,e_norm[i], batch_size[i])
+            self.train_epoch(g_normal, d_normal, gan_normal, scaled_data,label, e_norm[i], batch_size[i])
             name = '%03dx%03d-%s_g_model' % (gen_shape[1], gen_shape[2], 'tuned')
             self.save_model(g_normal,name)
             name = '%03dx%03d-%s_d_model' % (gen_shape[1], gen_shape[2], 'tuned')
@@ -502,14 +525,14 @@ class pGAN():
                 axs[i,j].axis('off')
                 axs[i,j].set_title('a:%d,v:%d,d:%d' %(a[cnt],v[cnt],d[cnt]))
                 cnt += 1
-        fig.savefig(name+'.png')
+        fig.savefig('C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/class/cgan/imagespro/'+name+'.png')
         plt.close()
 
     def save_model(self,model, model_name):
 
         def save(model, model_name):
-            model_path = "%spro.json" % model_name
-            weights_path = "%spro_weights.h5" % model_name
+            model_path = "C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/class/cgan/imagespro/%spro.json" % model_name
+            weights_path = "C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/class/cgan/imagespro/%spro_weights.h5" % model_name
             options = {"file_arch": model_path,
                         "file_weight": weights_path}
             #json_string = model.to_json()
@@ -521,13 +544,13 @@ class pGAN():
 
 
 if __name__ == '__main__':
-    pgan = pGAN()
-    batch = [ 16, 16, 8, 4]
-    epochs = [8, 8, 10, 10] 
-    dataset = np.load('face_image.npy',allow_pickle=True)
-    label = np.load('face_value.npy',allow_pickle=True)
+    cgan = CGAN()
+    batch = [ 16,16, 16, 8, 4]
+    epochs = [5,8, 8, 10, 10] 
+    dataset = np.load('C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/face64_image.npy',allow_pickle=True)
+    label = np.load('C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/face64_value.npy',allow_pickle=True)
 
     #cgan.discriminator.load_weights("C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/class/cgan/discriminatorpro_weights.h5")
     #cgan.generator.load_weights("C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/class/cgan/generatorpro_weights.h5")
     #cgan.classifier.load_weights("C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/class/saved/model64_weights.h5")
-    pgan.train(dataset, label,epochs,epochs, batch)
+    cgan.train(dataset, label,epochs,epochs, batch)
