@@ -393,7 +393,7 @@ class CGAN():
 
         # Adversarial ground truths
         valid = np.ones((half_batch, 1))
-        fake = np.zeros((half_batch, 1))
+        fake = -np.ones((half_batch, 1))
         valid_g = np.ones((batch_size, 1))
         ######classs a,v,d
         l1 = value[:,0]
