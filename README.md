@@ -16,6 +16,6 @@ The approach is implemented on Python and using Keras.
 
 ## Multiple Tasks Learning
 
-The approach is σ1 and σ2 are the trainable parameters and are regulated by the last term. This counld be the final loss fuction to be minimized. Increasing or decreasing σ1 and σ2 will affect the direction of the optomization.   
+The approach is σ1 and σ2 are the trainable parameters and are regulated by the last term. This counld be the final loss fuction to be minimized. Increasing or decreasing σ1 and σ2 will affect the direction of the optimization.   
 
 ![alt text](https://github.com/fishfishin/procrustrean/blob/master/weighted_GAN/formula.png).
