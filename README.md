@@ -10,3 +10,5 @@ The basic architecture derives from the Progressive GAN [Progressive Growing of 
 The approach is implemented on Python and using Keras.
 
 ## Training Dataset
+
+## Imbalanced Classificaiton Model
