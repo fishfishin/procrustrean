@@ -16,4 +16,4 @@ The approach is implemented on Python and using Keras.
 
 ## Multiple Tasks Learning
 
-The approach is 
+The approach is (https://github.com/fishfishin/procrustrean/blob/master/weighted_GAN/formula.png).
