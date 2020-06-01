@@ -7,11 +7,19 @@ from tensorflow.keras.layers import BatchNormalization, Activation, Embedding, L
 #######  adding 'tf.' very essential!!
 from tensorflow.keras.layers import UpSampling2D, Conv2D,Conv2DTranspose
 from tensorflow.keras.models import Sequential, Model
+from tensorflow.keras.losses import LogCosh
 from tensorflow.keras.optimizers import Adam, SGD
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import random
 import numpy as np
+import tensorflow.keras.backend as K
+from tensorflow.keras.datasets import mnist
+
+
+def wasserstein_loss(y_true, y_pred):
+	return K.mean(y_true * y_pred)
+
 
 class CGAN():
     def __init__(self):
@@ -23,17 +31,17 @@ class CGAN():
         
         self.latent_dim = 100
 
-        self.optimizer = Adam(0.0002, 0.5)
+        self.optimizer = Adam(0.0004, 0.5)
         self.loss = ['binary_crossentropy']
 
         # Build and compile the discriminator
         self.classifier = self.build_classifier()
-        self.classifier.load_weights("C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/class/saved/model3_weights.h5")
+        #self.classifier.load_weights("C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/class/saved/model64_weights.h5")
 
         self.discriminator = self.build_discriminator()
 
-        self.data = self.loaddata()
-        self.discriminator.compile(loss='binary_crossentropy',
+        
+        self.discriminator.compile(loss=['binary_crossentropy', tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh()],
             optimizer=self.optimizer)
 
         # Build the generator
@@ -42,106 +50,49 @@ class CGAN():
         # The generator takes noise and the target label as input
         # and generates the corresponding digit of that label
         in_lat = Input(shape=(self.latent_dim,))
-        imgs = Input(shape=(self.img_shape))
-        
-        img = self.generator([in_lat, imgs])
+        l1 = Input(shape=(1,))
+        l2 = Input(shape=(1,))
+        l3 = Input(shape=(1,))
+
+        img = self.generator([in_lat,l1,l2,l3])
 
         # For the combined model we will only train the generator
         self.discriminator.trainable = False
-        self.classifier.trainable = False
+        #self.classifier.trainable = False
 
         # The discriminator takes generated image as input and determines validity
         # and the label of that image
-        valid = self.discriminator(img)
-        a,v,d = self.classifier(img)
+        valid,a,v,d = self.discriminator(img)
+        #a,v,d = self.classifier(img)
 
         # The combined model  (stacked generator and discriminator)
         # Trains the generator to fool the discriminator
         opt = Adam(lr=0.0002, beta_1=0.5)
+        self.combined1 = Model([in_lat,l1,l2,l3], [valid,a,v,d])
+        self.combined1.compile(loss=['binary_crossentropy', tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh()],
+            optimizer=opt)  
         '''
-        self.combined1 = Model([in_lat, imgs], [valid,a,v,d])
-        
-        self.combined1.compile(loss=['binary_crossentropy',"mean_squared_error","mean_squared_error","mean_squared_error"],
-            optimizer=opt)
-        '''
-        self.combined1 = Model([in_lat, imgs], valid)
-        
-        self.combined1.compile(loss='binary_crossentropy',
-            optimizer=opt)       
-
         self.combined2 = Model([in_lat, imgs],[a,v,d])
         self.combined2.compile(loss= tf.keras.losses.LogCosh(),
-                    optimizer = SGD(0.002))
-        
-
-    def build_generator(self):
-
-        model = Sequential()
-
-        model.add(Conv2DTranspose(512, kernel_size=4, strides=2,input_shape=(4, 4, 1024), padding="same"))
-        model.add(BatchNormalization(momentum=0.8))
-        model.add(ReLU())
-
-        model.add(Conv2DTranspose(256, kernel_size=4, strides=2, padding="same"))
-        model.add(BatchNormalization(momentum=0.8))
-        model.add(ReLU())
-
-        model.add(Conv2DTranspose(128, kernel_size=4, strides=2, padding="same"))
-        model.add(BatchNormalization(momentum=0.8))
-        model.add(ReLU())
-        model.add(Conv2DTranspose(64, kernel_size=4, strides=2, padding="same"))
-        model.add(BatchNormalization(momentum=0.8))
-        model.add(ReLU())
-
-        model.add(Conv2DTranspose(self.channels, kernel_size=4, padding='same'))
-        model.add(Activation("tanh"))
-
-        #model.summary()
-
-        n = Input(shape=(self.latent_dim,))
-        img = Input(shape=self.img_shape)
-        
-        l1 = Model(inputs=self.classifier.input,outputs=self.classifier.get_layer('a').output)(img)
-        l2 = Model(inputs=self.classifier.input,outputs=self.classifier.get_layer('v').output)(img)
-        l3 = Model(inputs=self.classifier.input,outputs=self.classifier.get_layer('d').output)(img)
-
-        noise  = Concatenate()([n, l1,l2,l3])        
-        noise = Dense(4*4*1024)(noise)
-        noise= Reshape((4,4,1024))(noise)
-        noise=BatchNormalization(momentum=0.8)(noise)
-        model_input=ReLU()(noise)
-
+                    optimizer = opt)
         '''
-        label = Model(inputs=self.classifier.input,outputs=self.classifier.get_layer('seq').get_layer('f').output)(img)
-        label= MaxPooling2D((2,2),strides=None, padding="same")(label) #8x8
-
-        noise = Dense(8*8*64)(n) 
-        noise = Reshape((8,8,64))(noise) 
-        noise= BatchNormalization(momentum=0.8)(noise)
-        
-        model_input = Concatenate()([noise,label])
-        '''
-        image = model(model_input)
-        
-        #model_input = multiply([noise, label])
-
-        return Model([n, img], image)
 
     def build_classifier(self):
 
         model = Sequential(name='seq')
         img = Input(shape=self.img_shape)
+        # 64 x64 input_shape=self.img_shape,
+        model.add(Conv2D(32, kernel_size=3, activation="relu",strides=2,  name ='c1', padding="same"))
+        
+        model.add(Conv2D(32, kernel_size=3, activation="relu",strides=2, name ='c2', padding="same"))
 
-        model.add(Conv2D(32, kernel_size=3, activation="relu",strides=2, padding="same"))
-        # 64 x64 
-
-        model.add(Conv2D(64, kernel_size=3,activation="relu", strides=1, padding="same"))
+        model.add(Conv2D(64, kernel_size=3,activation="relu", strides=1, name ='c3',padding="same"))
         
         model.add(Dropout(0.25))
-
-        model.add(MaxPooling2D((2,2),strides=None, name ='f', padding="same"))
-        model.add(Flatten())
-
+        # 8x8
+        model.add(MaxPooling2D((2,2),strides=None, name ='m', padding="same"))
+        model.add(Flatten(name ='f'))
+        #model.summary()
         # Extract feature representation
         features = model(img)
 
@@ -164,80 +115,132 @@ class CGAN():
 
         mo = Model(img, [a,v,d]) 
 
-        return mo
+        return mo       
+
+    def build_generator(self):
+
+        model = Sequential()
+        '''
+        image = Input(shape=(self.img_shape))
+        l1,l2,l3 = round(Model(inputs=self.classifier.input,outputs=self.classifier.output)(image))
+        '''
+        n = Input(shape=(self.latent_dim,))
+        noise = Dense(8*8*256)(n)
+        noise = LeakyReLU(alpha=0.2)(noise)
+        noise = Reshape((8,8,256))(noise)
+       
+        l1 = Input(shape=(1,))
+        l2 = Input(shape=(1,))
+        l3 = Input(shape=(1,))        
+        label1= Dense(8*8)(Flatten()(Embedding(10, 60)(l1)))
+        label2= Dense(8*8)(Flatten()(Embedding(10, 60)(l2)))
+        label3= Dense(8*8)(Flatten()(Embedding(10, 60)(l3)))
+        label1 = Reshape((8,8,1))(label1)
+        label2 = Reshape((8,8,1))(label2)
+        label3 = Reshape((8,8,1))(label3)
+
+        model_input = Concatenate(axis=3)([noise, label1,label2,label3])
+     
+        # 16x16 UpSampling
+        model.add(UpSampling2D(input_shape=(8,8,256+3)))
+        model.add(Conv2D(256, kernel_size=4, padding="same"))
+        model.add(Activation("relu"))
+        model.add(BatchNormalization(momentum=0.8))
+
+
+        # 32x32 UpSampling
+        model.add(UpSampling2D())
+        model.add(Conv2D(128, kernel_size=4, padding="same"))
+        model.add(Activation("relu"))
+        model.add(BatchNormalization(momentum=0.8))
+
+        #64x64 UpSampling
+        model.add(UpSampling2D())
+        model.add(Conv2D(64, kernel_size=4, padding="same"))
+        model.add(Activation("relu"))
+        model.add(BatchNormalization(momentum=0.8))
+
+        model.add(Conv2D(self.channels, kernel_size=3, padding='same'))
+        model.add(Activation("tanh"))
+
+        img = model(model_input)
+
+        return Model([n,l1,l2,l3], img)
 
     def build_discriminator(self):
 
         model = Sequential()
+
+        model.add(Conv2D(64, kernel_size=3, strides=2, input_shape=self.img_shape, padding="same"))
+        model.add(LeakyReLU(alpha=0.2))
+        model.add(Dropout(0.25))
+
+        model.add(Conv2D(128, kernel_size=3, strides=2, padding="same"))
+        model.add(ZeroPadding2D(padding=((0,1),(0,1))))
+        model.add(LeakyReLU(alpha=0.2))
+        model.add(Dropout(0.25))
+        model.add(BatchNormalization(momentum=0.8))
+
+        model.add(Conv2D(256, kernel_size=3, strides=2, padding="same"))
+        model.add(LeakyReLU(alpha=0.2))
+        model.add(Dropout(0.25))
+        model.add(BatchNormalization(momentum=0.8))
+        
+        model.add(Conv2D(512, kernel_size=3, strides=1, padding="same"))
+        model.add(LeakyReLU(alpha=0.2))
+        model.add(Dropout(0.25))
+        model.add(Flatten())
+        
+
         img = Input(shape=self.img_shape)
 
-        model.add(Conv2D(128, kernel_size=4, strides=2, input_shape=(64,64,3),padding="same"))
-        model.add(LeakyReLU(alpha=0.2))
-        #model.add(Dropout(0.25))
-        
-        f = model(img)
-        label = Model(inputs=self.classifier.input,outputs=self.classifier.get_layer('seq').get_layer('f').output)(img)
-        label= UpSampling2D()(label) #32x32
-
-        model2 = Sequential()
-        f = Concatenate()([f,label])
-
-        model2.add(Conv2D(256, kernel_size=4, strides=2,input_shape=(32,32,128+64),padding="same"))
-        model2.add(BatchNormalization(momentum=0.8))
-        model2.add(LeakyReLU(alpha=0.2))
-        #model.add(Dropout(0.25))
-        
-
-        model2.add(Conv2D(512, kernel_size=4, strides=2, padding="same"))
-        model2.add(BatchNormalization(momentum=0.8))
-        model2.add(LeakyReLU(alpha=0.2))
-        
-        model2.add(Conv2D(1024, kernel_size=4, strides=2 , padding="same"))
-        model2.add(BatchNormalization(momentum=0.8))
-        model2.add(LeakyReLU(alpha=0.2))
-
-        model2.add(Flatten())
-        #model.summary()
-    
         # Extract feature representation
-        features = model2(f)
+        features = model(img)
 
         # Determine validity and label of the image
         validity = Dense(1, activation="sigmoid")(features)
-       
-
-        return Model(img, validity)
-
-    def loaddata(self):
-
-        c = np.load('C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/test.npy',allow_pickle=True)  
-        data =np.zeros(shape=(c.shape[0],64,64,3))
-        i=0
-        value = np.zeros(shape=(c.shape[0],3))
-        for img in c:
-            image = cv2.imread(img[3],cv2.IMREAD_UNCHANGED)     
-            if len(image.shape)==2: image = np.expand_dims(image, axis=3)
-            data[i,:,:,:]= image                
-            value[i,:]  = [img[4][0][0][0][0], img[4][0][1][0][0], img[4][0][2][0][0] ]# valence value
-            i=i+1
-
-        return data,  value
 
 
+        #a = Dense(64, activation="relu")(features)
+        a = Dense(1, activation="sigmoid")(features)
+        a = Lambda(lambda x: x * 9.+1,name='a')(a) 
+
+        #v = Dense(64, activation="relu")(features)
+        v = Dense(1, activation="sigmoid")(features)
+        v = Lambda(lambda x: x * 9.+1,name='v')(v) 
+
+        #d = Dense(64, activation="relu")(features)
+        d = Dense(1, activation="sigmoid")(features)
+        d = Lambda(lambda x: x * 9.+1,name='d')(d) 
+        
+
+        return Model(img, [validity,a,v,d])
 
     def train(self, epochs, batch_size=128, sample_interval=50):
 
-         # Load the dataset
-        X_train,value = self.data
-        
+        # Load the dataset
+        data = np.load('C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/face_image.npy',allow_pickle=True)
+        value= np.load('C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/face_value.npy',allow_pickle=True)
+        X_train = data
         # Configure inputs
         X_train = (X_train.astype(np.float32) - 127.5) / 127.5
-        # Adversarial ground truths
-        valid = np.ones((batch_size, 1))
-        fake = np.zeros((batch_size, 1))
         arr = np.arange(0,X_train.shape[0])
+        samples = X_train[0:4]
+        # Adversarial ground truths
+        half= int(batch_size/2)
+        valid = np.ones((half, 1))
+        fake = np.zeros((half, 1))
+        v_g = np.ones((half, 1))
+        ######classs a,v,d
+        l1 = value[:,0]
+        l2 = value[:,1]
+        l3 = value[:,2]
+        #V = l1*100+l2*10+l3
+        #V = V.astype(np.int16) 
+        ######
+
         for epoch in range(epochs):
-            
+
             size= int(X_train.shape[0]/batch_size)
             random.shuffle(arr)
             
@@ -246,65 +249,79 @@ class CGAN():
                 # ---------------------
                 #  Train Discriminator
                 # ---------------------
-
                 # Sample noise as generator input
-                in_lat = np.random.normal(0, 1, (batch_size, self.latent_dim))
-                idx = arr[i*batch_size:(i+1)*batch_size]
-                imgs = X_train[idx]
+                in_lat = np.random.normal(0, 1, (half, self.latent_dim))                
+                sam = np.random.randint(0,X_train.shape[0],half)
+                sam_img = X_train[sam]
+                a = l1[sam].astype(np.int32).reshape(-1,1)
+                v = l2[sam].astype(np.int32).reshape(-1,1)
+                d = l3[sam].astype(np.int32).reshape(-1,1)
+                fake_label1 = np.random.randint(1,11, (half, 1))
+                fake_label2 = np.random.randint(1,11, (half, 1))
+                fake_label3 = np.random.randint(1,11, (half, 1))
 
                 # Generate a half batch of new images
-                gen_imgs = self.generator.predict([in_lat,imgs])
+                gen_imgs = self.generator.predict([in_lat,fake_label1,fake_label2,fake_label3])
 
                 # Train the discriminator
-                d_loss_real = self.discriminator.train_on_batch(imgs,valid)
-                d_loss_fake = self.discriminator.train_on_batch(gen_imgs,fake)
+                x = np.concatenate((sam_img, gen_imgs))
+                img_score = np.concatenate((valid,fake))
+                aux_y1 = np.concatenate((a, fake_label1), axis=0)
+                aux_y2 = np.concatenate((v, fake_label2), axis=0)
+                aux_y3 = np.concatenate((d, fake_label3), axis=0)
+                #### assign 2 to real images. 
+                ##### don't train discriminator to produce class labels for generated images
+                weight = np.concatenate((np.ones(half) * 2, np.zeros(half)))
+                d_sample_weight = [np.ones((batch_size)), weight,weight,weight]
+                # Train the discriminator
+                d_loss = self.discriminator.train_on_batch( x, [img_score, aux_y1,aux_y2,aux_y3], sample_weight={"a":weight,"v":weight,"d":weight})
+                """
+                d_loss_real = self.discriminator.train_on_batch(sam_img ,[valid,a,v,d])
+                d_loss_fake = self.discriminator.train_on_batch(gen_imgs,[fake,fake_label1,fake_label2,fake_label3])
                 d_loss = 0.5*np.add(d_loss_real, d_loss_fake)
-
+                """
                 # ---------------------
                 #  Train Generator
                 # ---------------------
 
                 # Train the generator
            
-                a,v,d= self.classifier.predict(imgs)
+                #a,v,d= self.classifier.predict(imgs)
                 # control the weights of losses
-
-                if epoch % 1 ==0: 
-                
-                    g_loss1 = self.combined1.train_on_batch([in_lat,imgs], valid)
-                    print ("%d [D loss: %.4f] [G loss: %.4f,] " % (epoch, d_loss, g_loss1))
+            
+                g_loss1 = self.combined1.train_on_batch([in_lat,fake_label1,fake_label2,fake_label3], [valid,fake_label1,fake_label2,fake_label3])
+                print ("%d [D loss: %.4f, label: %.2f] [G loss: %.4f,label: %.2f] " % (epoch, d_loss[0],d_loss[1], g_loss1[0],g_loss1[1]))
                 # g_loss1 = self.combined1.train_on_batch([in_lat,imgs], [valid,arousal, valence,dominance])
-                else: 
-                    g_loss2 = self.combined2.train_on_batch([in_lat,imgs],[a,v,d])
-                    print ("%d [D loss: %.4f] [ match loss: %.4f ] " % (epoch, d_loss, g_loss2[0]))
-                
 
 
-            # Plot the progress
-            #print ("%d [D loss: %.4f] [G loss: %.4f, g loss: %.4f ] [C loss: %.3f ]" % (epoch, d_loss, g_loss1[0],  g_loss1[4],c_loss[0]))
-
-            #print ("%d [D loss: %.4f] [G loss: %.4f,match loss: %.4f ] " % (epoch, d_loss, g_loss1,  g_loss2[0]))
             # If at save interval => save generated image samples
                 if i % sample_interval == 0:
                     self.save_model()
-                    self.sample_images(i,gen_imgs)
+                    self.sample_images(i)
 
-    def sample_images(self, epoch,gen_imgs):
-        
+
+
+
+    def sample_images(self, epoch):
+        r, c = 2, 2
+        noise = np.random.normal(0, 1, (r * c, self.latent_dim))
+        a = np.asarray([5,5,5,5])
+        v = np.asarray([2,8,10,5])
+        d = np.asarray([4,6,1,3])
+        gen_imgs = self.generator.predict([noise,a,v,d])
         # Rescale images 0 - 1
-        gen_imgs = 127.5 * gen_imgs + 127.5
+        gen_imgs = 127.5 * gen_imgs + 127.5 
 
-        r, c = 2,2
         fig, axs = plt.subplots(r, c)
         cnt = 0
         for i in range(r):
             for j in range(c):
                 axs[i,j].imshow(gen_imgs.astype(np.uint8)[cnt,:,:,:])
                 axs[i,j].axis('off')
+                axs[i,j].set_title('a:%d,v:%d,d:%d' %(a[cnt],v[cnt],d[cnt]))
                 cnt += 1
         fig.savefig("C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/class/cgan/imagesnew/%d.png" % epoch)
         plt.close()
-
 
     def save_model(self):
 
@@ -326,5 +343,21 @@ if __name__ == '__main__':
     
     #cgan.discriminator.load_weights("C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/class/cgan/discriminatornew_weights.h5")
     #cgan.generator.load_weights("C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/class/cgan/generatornew_weights.h5")
-    cgan.classifier.load_weights("C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/class/saved/model3_weights.h5")
-    cgan.train(epochs=140, batch_size=64, sample_interval=30)
+    cgan.classifier.load_weights("C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/class/saved/model4_weights.h5")
+    cgan.train(epochs=500, batch_size=16, sample_interval=20)
+
+    data = np.load('C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/test_image_data.npy',allow_pickle=True)
+    image = (data[0:1].astype(np.float32)- 127.5) / 127.5
+    f = Model(inputs=cgan.classifier.input,outputs=cgan.classifier.get_layer('seq').get_layer('m').output)(image)
+    with tf.Session() as sess:
+        f = f.eval()
+        f = 0.5*f+0.5
+        r, c = 4,4
+        fig, axs = plt.subplots(r, c)
+        cnt = 0
+        for i in range(r):
+            for j in range(c):
+                axs[i,j].imshow(f[0,:,:,cnt])
+                axs[i,j].axis('off')
+                cnt += 1
+        fig.savefig("C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/class/cgan/imagesnew/c.png" )
