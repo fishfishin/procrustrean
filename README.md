@@ -22,7 +22,7 @@ The approach is σ1 and σ2 are the trainable parameters and are regulated by th
 ![alt text](https://github.com/fishfishin/procrustrean/blob/master/weighted_GAN/formula.png).
 
 And here is an code example.
-```
+```ruby
 class CustomMultiLossLayer(Layer):
     def __init__(self, nb_outputs=4, **kwargs):
         self.nb_outputs = nb_outputs
