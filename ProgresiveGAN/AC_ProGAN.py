@@ -186,7 +186,7 @@ class CGAN():
             d = old_model.layers[i](d)
         # define straight-through model
         features = d
-        validity = Dense(1, activation="sigmoid")(features)
+        validity = Dense(1)(features)
         
         a = Dense(1, activation="sigmoid")(features)
         a = Lambda(lambda x: x * 9.+1)(a) 
@@ -216,7 +216,7 @@ class CGAN():
         for i in range(n_input_layers, len(old_model.layers)-6):
             d = old_model.layers[i](d)
         feature = d
-        validity = Dense(1, activation="sigmoid")(feature)
+        validity = Dense(1)(feature)
         
         a = Dense(1, activation="sigmoid")(feature)
         a = Lambda(lambda x: x * 9.+1)(a) 
@@ -254,7 +254,7 @@ class CGAN():
         num1 = np.asarray([9.]).astype(np.float32)
         num2 = np.asarray([1.]).astype(np.float32)
         features = d
-        validity = Dense(1, activation="sigmoid")(features)
+        validity = Dense(1)(features)
         
         a = Dense(1, activation="sigmoid")(features)
         a = Lambda(lambda x: x * 9.+1)(a) 
