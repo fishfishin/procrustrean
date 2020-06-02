@@ -26,7 +26,6 @@ The approach is σ1 and σ2 are the trainable parameters and are regulated by th
 
 ![alt text](https://github.com/fishfishin/procrustrean/blob/master/weighted_GAN/formula.png).
 
-![alt text](https://github.com/fishfishin/procrustrean/blob/master/CNN%20_plus_cGAN/acgan.png).
 
 And here is an code example to show us how to implement this method during the training
 ```ruby
