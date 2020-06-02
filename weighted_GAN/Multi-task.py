@@ -186,6 +186,7 @@ class CGAN():
         g_model = self.generator ###the last one 64x64 tuned
         d_model= self.discriminator
         self.classifier.trainable = False
+        self.discriminator.trainable = False
         n = Input(shape=(self.latent_dim,)) 
         #image=Input(shape=self.img_shape)
         l1 = Input(shape=(1,))
@@ -218,8 +219,8 @@ class CGAN():
     def build_generator(self):
 
         model = Sequential()
-
-        '''n = Input(shape=(self.latent_dim,))
+        dep=4
+        '''n = Input(shape=(self.latent_dim,))3
         noise = Dense(8*8*128)(n)
         noise = LeakyReLU(alpha=0.2)(noise)
         noise = Reshape((8,8,128))(noise)
@@ -277,7 +278,7 @@ class CGAN():
 
         img = model(model_input)
 
-        return Model([n,l1,l2,l3], img)
+        return Model([noise,l1,l2,l3], img)
 
     def build_discriminator(self):
 
