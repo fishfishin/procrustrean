@@ -22,8 +22,7 @@ from tensorflow.keras.constraints import Constraint
 #### donot mix tf.keras and keras !!!!
 from keras.losses import binary_crossentropy
 
-def wasserstein_loss(x):
-    y_true, y_pred =x
+def wasserstein_loss(y_true, y_pred):
     return K.mean(y_true * y_pred)
 
 def mse_loss(x):
@@ -31,14 +30,16 @@ def mse_loss(x):
 
     return K.sqrt(y_true - y_pred)
 
-def ignoreLoss(true,pred ):
-    
+def ignoreLoss(true,pred ):  
     return pred
 
 def calLoss(x):
     true,pred = x
     return binary_crossentropy(true,pred)
 
+def softmax(x):
+    exps=K.exp(x)  # x-K.max(x)
+    return exps/K.sum(exps)
 
 class LossWeighter(Layer):
     def __init__(self, **kwargs): #kwargs can have 'name' and other things
@@ -78,13 +79,11 @@ class CustomMultiLossLayer(Layer):
     def multi_loss(self, ys_true, ys_pred):
         assert len(ys_true) == self.nb_outputs and len(ys_pred) == self.nb_outputs
         loss = 0
-        i =0
         for y_true, y_pred, log_var in zip(ys_true, ys_pred, self.log_vars):
             precision = K.exp(-log_var[0])
-             ############### softmax for crossentropy loss
-            if i ==0: loss+=
+             ############### softmax for crossentropy los
             ############### Euclidean distance for continuous value
-            else: loss += K.sum(precision * (y_true - y_pred)**2. + log_var[0], -1)
+            loss += K.sum(precision * (y_true - y_pred)**2. + log_var[0], -1)
         return K.mean(loss)
 
     def call(self, inputs):
@@ -115,7 +114,7 @@ class CGAN():
         self.channels = 3
         self.img_shape = (self.img_rows, self.img_cols, self.channels)
         
-        self.latent_dim = 100
+        self.latent_dim = 150
 
         self.optimizer = Adam(0.0002, 0.5)
         self.loss = ['binary_crossentropy']
@@ -123,7 +122,7 @@ class CGAN():
         # Build and compile the discriminator
         self.discriminator = self.build_discriminator()
         self.discriminator.trainable = False
-        self.discriminator.compile(loss='binary_crossentropy',
+        self.discriminator.compile(loss=wasserstein_loss,
             optimizer=self.optimizer)
 
         # Build the generator
@@ -211,7 +210,7 @@ class CGAN():
         weightedloss = CustomMultiLossLayer(nb_outputs=4)([valid,l1,l2,l3,  score, a,v,d])
 
         model = Model([n,l1,l2,l3,valid], weightedloss  )
-        model.compile(optimizer=Adam(0.0001, 0.5), loss = None )
+        model.compile(optimizer=Adam(0.001, 0.5), loss =ignoreLoss )
         return model
 
         
@@ -220,11 +219,10 @@ class CGAN():
 
         model = Sequential()
 
-        n = Input(shape=(self.latent_dim,))
+        '''n = Input(shape=(self.latent_dim,))
         noise = Dense(8*8*128)(n)
         noise = LeakyReLU(alpha=0.2)(noise)
         noise = Reshape((8,8,128))(noise)
-       
         l1 = Input(shape=(1, ))
         l2 = Input(shape=(1, ))
         l3 = Input(shape=(1,))        
@@ -234,15 +232,33 @@ class CGAN():
         label1 = Reshape((8,8,1))(label1)
         label2 = Reshape((8,8,1))(label2)
         label3 = Reshape((8,8,1))(label3)
+        '''
+        noise = Input(shape=(self.latent_dim,))    
+        l1 = Input(shape=(1,))
+        l2 = Input(shape=(1,))
+        l3 = Input(shape=(1,))        
+        label1= Embedding(10, 50)(l1)
+        label2= Embedding(10, 50)(l2)
+        label3=Embedding(10, 50)(l3)
+        label = Concatenate()([label1,label2,label3])
 
-        model_input = Concatenate(axis=3)([noise, label1,label2,label3])
-     
-        # 16x16 UpSampling
-        model.add(UpSampling2D(input_shape=(8,8,128+3)))
+        ### from n to z sapce
+        model_input = multiply([noise, label])
+
+        model.add(Dense(256 * dep * dep, activation="relu", input_dim=self.latent_dim))
+        model.add(Reshape((dep, dep, 256)))
+
+        # 8x8 UpSampling
+        model.add(UpSampling2D())
         model.add(Conv2D(256, kernel_size=4, padding="same"))
         model.add(Activation("relu"))
         model.add(BatchNormalization(momentum=0.8))
 
+        # 16x16 UpSampling
+        model.add(UpSampling2D())
+        model.add(Conv2D(256, kernel_size=4, padding="same"))
+        model.add(Activation("relu"))
+        model.add(BatchNormalization(momentum=0.8))
 
         # 32x32 UpSampling
         model.add(UpSampling2D())
@@ -310,7 +326,7 @@ class CGAN():
         samples = X_train[0:4]
         # Adversarial ground truths
         valid = np.ones((batch_size, 1))
-        fake = np.zeros((batch_size, 1))
+        fake = -np.ones((batch_size, 1))
         ######classs a,v,d
         l1 = value[:,0]
         l2 = value[:,1]
@@ -329,10 +345,11 @@ class CGAN():
                 a = l1[sam]
                 v = l2[sam]
                 d = l3[sam]
-                fake_label1 ,fake_label2, fake_label3 = np.asarray(self.classifier.predict(sam_img))
-
+                fake_label1 = np.random.randint(1,11, (batch_size, 1))
+                fake_label2 = np.random.randint(1,11, (batch_size, 1))
+                fake_label3 = np.random.randint(1,11, (batch_size, 1))
                 # Generate a half batch of new images
-                gen_imgs = self.generator.predict([in_lat,a,v,d])#fake_label1.astype(np.int32),fake_label2.astype(np.int32),fake_label3.astype(np.int32)])
+                gen_imgs = self.generator.predict([in_lat,fake_label1,fake_label2,fake_label3])#fake_label1.astype(np.int32),fake_label2.astype(np.int32),fake_label3.astype(np.int32)])
 
                 # Train the discriminator
                 d_loss_real = self.discriminator.train_on_batch(sam_img ,valid)
@@ -344,7 +361,7 @@ class CGAN():
                 # control the weights of losses
                 emotion =self.build_emotion()
                
-                g_total_loss = emotion.train_on_batch([in_lat,sam_img,valid], fake)
+                g_total_loss = emotion.train_on_batch([in_lat,a,v,d,valid], fake)
                 print ("%d [D loss: %.4f] [G loss: %.4f] " % (epoch, d_loss, g_total_loss))
                 
             # If at save interval => save generated image samples
@@ -388,10 +405,10 @@ class CGAN():
 if __name__ == '__main__':
     cgan = CGAN()
     e = cgan.emotion
-    e.summary()
+    
     
     #cgan.discriminator.load_weights("C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/class/cgan/acgan_model/discriminator_weights.hdf5")
     #cgan.generator.load_weights("C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/class/cgan/acgan_model/generator_weights.hdf5")
     
-    #cgan.classifier.load_weights("C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/class/saved/model3_weights.h5")
-    cgan.train(epochs=140, batch_size=10, sample_interval=20)
+    cgan.classifier.load_weights("C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/class/saved/model3_weights.h5")
+    cgan.train(epochs=140, batch_size=16, sample_interval=20)
