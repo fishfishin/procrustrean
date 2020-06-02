@@ -79,11 +79,16 @@ class CustomMultiLossLayer(Layer):
     def multi_loss(self, ys_true, ys_pred):
         assert len(ys_true) == self.nb_outputs and len(ys_pred) == self.nb_outputs
         loss = 0
+        i=0
         for y_true, y_pred, log_var in zip(ys_true, ys_pred, self.log_vars):
             precision = K.exp(-log_var[0])
-             ############### softmax for crossentropy los
+             ############### wassertein for crossentropy los
+            if i ==0:  
+                loss += K.sum(precision *K.mean(y_true * y_pred, keepdims=True) + log_var[0], -1)
             ############### Euclidean distance for continuous value
-            loss += K.sum(precision * (y_true - y_pred)**2. + log_var[0], -1)
+            else: 
+                loss += K.sum(precision * (y_true - y_pred)**2. + log_var[0], -1)
+            i = i+1
         return K.mean(loss)
 
     def call(self, inputs):
