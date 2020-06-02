@@ -15,7 +15,7 @@ The basic architecture derives from the Progressive GAN [Progressive Growing of 
 The approach is implemented on Python and using Keras.
 
 ## Training Dataset
-Training dataset is very important for the quality of generated images.
+Training dataset is very important for the quality of generated images. In this project, the database (https://www.kaggle.com/jonathanoheix/face-expression-recognition-dataset?) is used for emotion translation.
 
 ## Imbalanced Classificaiton Model
 Emotion recognizition model comes from the paper [Combining Facial Expressions and Electroencephalography to Enhance Emotion Recognition](https://www.mdpi.com/1999-5903/11/5/105). The baseline is a 3-layer Convolutional Network and the more than one seperate fully connected layer for outputs .
