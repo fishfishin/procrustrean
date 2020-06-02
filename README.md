@@ -10,6 +10,7 @@ The basic architecture derives from the Progressive GAN [Progressive Growing of 
 The approach is implemented on Python and using Keras.
 
 ## Training Dataset
+Training dataset is very important for the quality of generated images.
 
 ## Imbalanced Classificaiton Model
 
