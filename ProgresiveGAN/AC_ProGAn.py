@@ -188,21 +188,19 @@ class CGAN():
             d = old_model.layers[i](d)
         # define straight-through model
         features = d
-        validity = Dense(1, activation="sigmoid")(features)
-        
+        validity = Dense(1)(features)
         a = Dense(1, activation="sigmoid")(features)
-        a = Lambda(lambda x: x * 9.+1)(a) 
+        a = Lambda(lambda x: x * 9.+1, name='a')(a) 
         v = Dense(1, activation="sigmoid")(features)
-        v = Lambda(lambda x: x * 9.+1)(v)
+        v = Lambda(lambda x: x * 9.+1, name='v')(v)
         da = Dense(1, activation="sigmoid")(features)
-        da = Lambda(lambda x: x * 9.+1)(da)
+        da = Lambda(lambda x: x * 9.+1, name='da')(da)
         '''
         a = Dense(10,name="a", activation="softmax")(features)
         v = Dense(10, name="v",activation="softmax")(features)
         da = Dense(10,name="da", activation="softmax")(features)
         '''
-        out_class = [validity,a,v,da] 
-        
+        out_class = [validity,a,v,da]
         model1 = Model(image, out_class)
         '''
         model1.compile(loss=["binary_crossentropy", 'sparse_categorical_crossentropy','sparse_categorical_crossentropy','sparse_categorical_crossentropy'],
@@ -221,27 +219,26 @@ class CGAN():
         for i in range(n_input_layers, len(old_model.layers)-6):
             d = old_model.layers[i](d)
         feature = d
-        validity = Dense(1, activation="sigmoid")(feature)
-        
+        validity = Dense(1)(features)
         a = Dense(1, activation="sigmoid")(feature)
-        a = Lambda(lambda x: x * 9.+1)(a) 
+        a = Lambda(lambda x: x * 9.+1, name='a')(a) 
         v = Dense(1, activation="sigmoid")(feature)
-        v = Lambda(lambda x: x * 9.+1)(v)
+        v = Lambda(lambda x: x * 9.+1, name='v')(v)
         da = Dense(1, activation="sigmoid")(feature)
-        da = Lambda(lambda x: x * 9.+1)(da)
+        da = Lambda(lambda x: x * 9.+1, name='da')(da)
         '''
         a = Dense(10, name="a",activation="softmax")(features)
         v = Dense(10, name="v",activation="softmax")(features)
         da = Dense(10,name="da", activation="softmax")(features)
         '''
-        out_class = [validity,a,v,da] 
+        out_class = [validity,a,v,da]
         
         model2 = Model(image, out_class)
         '''
         model2.compile(loss=["binary_crossentropy", 'sparse_categorical_crossentropy','sparse_categorical_crossentropy','sparse_categorical_crossentropy'],
                 optimizer=Adam(lr=0.001, beta_1=0, beta_2=0.99, epsilon=10e-8))
         '''
-        model2.compile(loss=[wasserstein_loss, tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh()],
+        model2.compile(loss=[wasserstein_loss,tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh()],
                     optimizer=Adam(lr=0.001, beta_1=0, beta_2=0.99, epsilon=10e-8))
         
         return [model1, model2]
@@ -265,8 +262,7 @@ class CGAN():
         num1 = np.asarray([9.]).astype(np.float32)
         num2 = np.asarray([1.]).astype(np.float32)
         features = d
-        validity = Dense(1, activation="sigmoid")(features)
-        
+        validity = Dense(1)(features)
         a = Dense(1, activation="sigmoid")(features)
         a = Lambda(lambda x: x * 9.+1, name='a')(a) 
         v = Dense(1, activation="sigmoid")(features)
@@ -278,7 +274,8 @@ class CGAN():
         v = Dense(10,name="v", activation="softmax")(features)
         da = Dense(10, name="da",activation="softmax")(features)
         '''
-        out_class = [validity,a,v,da] 
+        out_class = [validity,a,v,da]
+
         model = Model(img, out_class)
         model_list=list()
         '''
@@ -357,7 +354,7 @@ class CGAN():
         g = PixelNormalization()(g)
         g = LeakyReLU(alpha=0.2)(g)
 
-        out_image = Conv2D(3, (1,1), padding='same', kernel_initializer=init, kernel_constraint=const)(g)
+        out_image = Conv2D(self.channels, (1,1), padding='same', kernel_initializer=init, kernel_constraint=const)(g)
 
         model = Model([noise,l1,l2,l3], out_image)
 
@@ -386,16 +383,26 @@ class CGAN():
 
             d_models[0].trainable = False
             img = g_models[0]([in_lat,l1,l2,l3])
+            
             valid,a,v,d = d_models[0](img)
             model1= Model([in_lat,l1,l2,l3], [valid,a,v,d])
-            model1.compile(loss=["binary_crossentropy", tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh()],
+            '''
+            valid1,valid2,valid3,a,v,d = d_models[0](img)
+            model1= Model([in_lat,l1,l2,l3], [valid1,valid2,valid3,a,v,d])
+            '''
+            model1.compile(loss=[wasserstein_loss, tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh()],
                              optimizer=Adam(lr=0.001, beta_1=0, beta_2=0.99, epsilon=10e-8))
 
             d_models[1].trainable = False
             img = g_models[1]([in_lat,l1,l2,l3])
+            
             valid,a,v,d = d_models[1](img)
             model2= Model([in_lat,l1,l2,l3], [valid,a,v,d])
-            model2.compile(loss=["binary_crossentropy", tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh()],
+            '''
+            valid1,valid2,valid3,a,v,d = d_models[0](img)
+            model2= Model([in_lat,l1,l2,l3], [valid1,valid2,valid3,a,v,d])
+            '''
+            model2.compile(loss=[wasserstein_loss,tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh()],
                              optimizer=Adam(lr=0.001, beta_1=0, beta_2=0.99, epsilon=10e-8))
             model_list.append([model1, model2])
         return model_list
