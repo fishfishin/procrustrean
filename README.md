@@ -8,6 +8,9 @@ The basic architecture derives from the Progressive GAN [Progressive Growing of 
 
 ![alt text](https://github.com/fishfishin/procrustrean/blob/master/ProgresiveGAN/progan.png)
 
+![alt text](https://github.com/fishfishin/procrustrean/blob/master/CNN%20_plus_cGAN/acgan.png)
+
+
 ## Implementation
 The approach is implemented on Python and using Keras.
 
