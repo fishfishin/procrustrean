@@ -6,6 +6,8 @@
 This goal is realized by convolutional neuron networks with adaptive weighting on the two losses of image generation and emotion classification. And the detailed weighting method is described in this paper [Multi-Task Learning Using Uncertainty to Weigh Losses for Scene Geometry and Semantics](https://arxiv.org/abs/1705.07115/).
 The basic architecture derives from the Progressive GAN [Progressive Growing of GANs for Improved Quality, Stability, and Variation](https://arxiv.org/abs/1710.10196) and [Conditional Image Synthesis with Auxiliary Classifier GANs](https://www.arxiv-vanity.com/papers/1610.09585/).
 
+![alt text](https://github.com/fishfishin/procrustrean/blob/master/ProgresiveGAN/progan.png)
+
 ## Implementation
 The approach is implemented on Python and using Keras.
 
@@ -20,6 +22,8 @@ Emotion recognizition model comes from the paper [Combining Facial Expressions a
 The approach is σ1 and σ2 are the trainable parameters and are regulated by the last term. This counld be the final loss fuction to be minimized. Increasing or decreasing σ1 and σ2 will affect the direction of the optimization.   
 
 ![alt text](https://github.com/fishfishin/procrustrean/blob/master/weighted_GAN/formula.png).
+
+![alt text](https://github.com/fishfishin/procrustrean/blob/master/CNN%20_plus_cGAN/acgan.png).
 
 And here is an code example to show us how to implement this method during the training
 ```ruby
