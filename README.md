@@ -13,7 +13,7 @@ The approach is implemented on Python and using Keras.
 Training dataset is very important for the quality of generated images.
 
 ## Imbalanced Classificaiton Model
-
+Emotion recognizition model comes from the paper [Combining Facial Expressions and Electroencephalography to Enhance Emotion Recognition](https://www.mdpi.com/1999-5903/11/5/105). The baseline is a 3=layer Convolutional Network and the more than one output.
 
 ## Multiple Tasks Learning
 
