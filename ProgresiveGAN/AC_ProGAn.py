@@ -1,5 +1,5 @@
 from __future__ import print_function, division
-
+from matplotlib import pyplot
 from math import sqrt
 import cv2
 from tensorflow.keras.layers import Input, Dense, Reshape, Flatten, Dropout, multiply,Concatenate,Lambda,Add,Layer,AveragePooling2D,add
@@ -8,7 +8,7 @@ from tensorflow.keras.layers import BatchNormalization, Activation, Embedding, L
 from tensorflow.keras.layers import UpSampling2D, Conv2D,Conv2DTranspose
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.losses import LogCosh
-from tensorflow.keras.optimizers import Adam, SGD
+from tensorflow.keras.optimizers import Adam, SGD,RMSprop
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import random
@@ -73,6 +73,36 @@ class PixelNormalization(Layer):
     def compute_output_shape(self, input_shape):
         return input_shape
 
+
+class CustomMultiLossLayer(Layer):
+    def __init__(self, nb_outputs=4, **kwargs):
+        self.nb_outputs = nb_outputs
+        self.is_placeholder = True
+        super(CustomMultiLossLayer, self).__init__(**kwargs)
+        
+    def build(self, input_shape=None):
+        # initialise log_vars
+        self.log_vars = []
+        for i in range(self.nb_outputs):
+            self.log_vars += [self.add_weight(name='log_var' + str(i), shape=(1,),
+                                              initializer=Constant(0.), trainable=True)]
+        super(CustomMultiLossLayer, self).build(input_shape)
+
+    def multi_loss(self, ys_true, ys_pred):
+        assert len(ys_true) == self.nb_outputs and len(ys_pred) == self.nb_outputs
+        loss = 0
+        i=0
+        for y_true, y_pred, log_var in zip(ys_true, ys_pred, self.log_vars):
+            precision = K.exp(-log_var[0])
+             ############### wassertein for crossentropy los
+            if i ==0:  
+                loss += K.sum(precision *K.mean(y_true * y_pred, keepdims=True) + log_var[0], -1)
+            ############### Euclidean distance for continuous value
+            else: 
+                loss += K.sum(precision * (y_true - y_pred)**2. + log_var[0], -1)
+            i = i+1
+        return K.mean(loss)
+
 class CGAN():
     def __init__(self):
         # Input shape
@@ -80,7 +110,7 @@ class CGAN():
         self.img_cols = 64
         self.channels = 3
         self.img_shape = (self.img_rows, self.img_cols, self.channels)
-        
+        self.opt = RMSprop(lr=0.001)  ####Adam(lr=0.0001, beta_1=0, beta_2=0.99, epsilon=10e-8)
         self.latent_dim = 150
         self.loss = ['binary_crossentropy']
 
@@ -104,8 +134,8 @@ class CGAN():
        #self.discriminator.compile(loss=['binary_crossentropy', tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh()],
        #     optimizer=self.optimizer)
         # The combined model  (stacked generator and discriminator)
-        # Trains the generator to fool the discriminator
-        self.opt = Adam(lr=0.0002, beta_1=0.5)
+        # Trains the generator to fool the discriminator   
+        
  
     def get_config(self):
 
@@ -207,7 +237,7 @@ class CGAN():
                 optimizer=Adam(lr=0.001, beta_1=0, beta_2=0.99, epsilon=10e-8))
         '''
         model1.compile(loss=[wasserstein_loss, tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh()],
-                    optimizer=Adam(lr=0.0001, beta_1=0, beta_2=0.99, epsilon=10e-8))
+                    optimizer=self.opt)
         
         downsample = AveragePooling2D()(image)
         block_old = old_model.layers[1](downsample)
@@ -239,7 +269,7 @@ class CGAN():
                 optimizer=Adam(lr=0.001, beta_1=0, beta_2=0.99, epsilon=10e-8))
         '''
         model2.compile(loss=[wasserstein_loss,tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh()],
-                    optimizer=Adam(lr=0.001, beta_1=0, beta_2=0.99, epsilon=10e-8))
+                    optimizer=self.opt)
         
         return [model1, model2]
 
@@ -258,6 +288,8 @@ class CGAN():
         d = LeakyReLU(alpha=0.2)(d)
         d = Dropout(0.25)(d)
         d = Flatten()(d)
+
+        #### drop out for acgan
 
         num1 = np.asarray([9.]).astype(np.float32)
         num2 = np.asarray([1.]).astype(np.float32)
@@ -283,7 +315,7 @@ class CGAN():
                 optimizer=Adam(lr=0.001, beta_1=0, beta_2=0.99, epsilon=10e-8))
         '''
         model.compile(loss=[wasserstein_loss, tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh()],
-                    optimizer=Adam(lr=0.001, beta_1=0, beta_2=0.99, epsilon=10e-8))
+                    optimizer=self.opt)
         
         model_list.append([model, model])
 
@@ -391,7 +423,7 @@ class CGAN():
             model1= Model([in_lat,l1,l2,l3], [valid1,valid2,valid3,a,v,d])
             '''
             model1.compile(loss=[wasserstein_loss, tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh()],
-                             optimizer=Adam(lr=0.001, beta_1=0, beta_2=0.99, epsilon=10e-8))
+                             optimizer=self.opt)
 
             d_models[1].trainable = False
             img = g_models[1]([in_lat,l1,l2,l3])
@@ -403,7 +435,7 @@ class CGAN():
             model2= Model([in_lat,l1,l2,l3], [valid1,valid2,valid3,a,v,d])
             '''
             model2.compile(loss=[wasserstein_loss,tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh(),tf.keras.losses.LogCosh()],
-                             optimizer=Adam(lr=0.001, beta_1=0, beta_2=0.99, epsilon=10e-8))
+                             optimizer=self.opt)
             model_list.append([model1, model2])
         return model_list
 
@@ -549,18 +581,17 @@ class CGAN():
         d = np.asarray([5,10,7,10])
         gen_imgs =g_model.predict([noise,a,v,d])
         # Rescale images 0 - 1
-        gen_imgs = 127.5 * gen_imgs + 127.5 
+        gen_imgs =0.5 * gen_imgs + 0.5 
 
-        fig, axs = plt.subplots(r, c)
-        cnt = 0
-        for i in range(r):
-            for j in range(c):
-                axs[i,j].imshow(gen_imgs.astype(np.uint8)[cnt,:,:,:])
-                axs[i,j].axis('off')
-                axs[i,j].set_title('a:%d,v:%d,d:%d' %(a[cnt],v[cnt],d[cnt]))
-                cnt += 1
-        fig.savefig('C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/class/cgan/imagespro/'+name+'.png')
-        plt.close()
+        square = 2
+        for i in range(4):
+            pyplot.subplot(square, square, 1 + i)
+            pyplot.axis('off')
+            pyplot.imshow(gen_imgs[i])
+        filename1 = 'C:/Users/ZhenjuYin/Documents/Python Scripts/emotic/class/cgan/imagespro/plot_%s.png' % (name)
+        pyplot.savefig(filename1)
+        pyplot.close()
+        
 
     def save_model(self,model, model_name):
 
