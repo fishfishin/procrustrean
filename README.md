@@ -21,6 +21,8 @@ Training dataset is very important for the quality of generated images.
 Emotion recognizition model comes from the paper [Combining Facial Expressions and Electroencephalography to Enhance Emotion Recognition](https://www.mdpi.com/1999-5903/11/5/105). The baseline is a 3-layer Convolutional Network and the more than one seperate fully connected layer for outputs .
 For combination with ProGAN, so we need to pre-train CNN with data of different resolutions. For example, we need 
 
+Otherwise, we can take the output layer and blocks from ACGAN to implement classification.  
+
 ## Multiple Tasks Learning
 
 The approach is σ1 and σ2 are the trainable parameters and are regulated by the last term. This counld be the final loss fuction to be minimized. Increasing or decreasing σ1 and σ2 will affect the direction of the optimization.   
