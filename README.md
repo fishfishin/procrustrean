@@ -37,23 +37,27 @@ class CustomMultiLossLayer(Layer):
         self.nb_outputs = nb_outputs
         self.is_placeholder = True
         super(CustomMultiLossLayer, self).__init__(**kwargs)
+        
     def build(self, input_shape=None):
         # initialise log_vars
         self.log_vars = []
         for i in range(self.nb_outputs):
-            self.log_vars += [self.add_weight(name='log_var' + str(i), shape=(1,), initializer=Constant(0.), trainable=True)]
+            self.log_vars += [self.add_weight(name='log_var' + str(i), shape=(1,),
+                                              initializer=Constant(0.), trainable=True)]
         super(CustomMultiLossLayer, self).build(input_shape)
+
     def multi_loss(self, ys_true, ys_pred):
         assert len(ys_true) == self.nb_outputs and len(ys_pred) == self.nb_outputs
         loss = 0
+        i=0
         for y_true, y_pred, log_var in zip(ys_true, ys_pred, self.log_vars):
             precision = K.exp(-log_var[0])
-            else: loss += K.sum(precision * (y_true - y_pred)**2. + log_var[0], -1)
+             ############### wassertein for crossentropy los
+            if i ==0:  
+                loss += K.sum(precision *K.mean(y_true * y_pred, keepdims=True) + log_var[0], -1)
+            ############### Euclidean distance for continuous value
+            else: 
+                loss += K.sum(precision * (y_true - y_pred)**2. + log_var[0], -1)
+            i = i+1
         return K.mean(loss)
-    def call(self, inputs):
-        ys_true = inputs[:self.nb_outputs]
-        ys_pred = inputs[self.nb_outputs:]
-        loss = self.multi_loss(ys_true, ys_pred)
-        self.add_loss(loss, inputs=inputs)
-        return K.concatenate(inputs, -1)
   ```
