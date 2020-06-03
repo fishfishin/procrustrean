@@ -23,7 +23,9 @@ from tensorflow.keras.constraints import Constraint
 from keras.losses import binary_crossentropy
 from os import listdir
 
-
+##################################
+#  help function
+##################################
 def wasserstein_loss(y_true, y_pred):
     return K.mean(y_true * y_pred)
 
@@ -42,17 +44,18 @@ def softmax(x):
     exps=K.exp(x)  # x-K.max(x)
     return exps/K.sum(exps)
 
-def l2_distance(A, B):
-    return tf.norm(A - B)
-def l1_distance(x):
-    A, B =x
-    return K.mean(tf.norm(A - B,ord=1))
+def l1_distance(y_true, y_pred):
+    return tf.reduce_mean(tf.abs(y_pred - y_true))*10
 def bce(x):
     y_true,y_pred =x
     return binary_crossentropy(y_true,y_pred)
 def loss(v):
     x,z =v
-    return x+10*z
+    return x+ z
+
+###################################
+#   construct model
+###################################
 
 class DoubleCGAN():
     def __init__(self):
@@ -62,24 +65,73 @@ class DoubleCGAN():
         self.channels = 1
         
         self.label_dim = 64
-        self.batch_size =6
+        self.batch_size =1
         self.epochs =100
         self.img_shape = (self.img_rows, self.img_cols, self.channels)
         self.encoder1 = self.encoder1()
         self.encoder2 = self.encoder2()
         self.encoder1.summary()
         self.optimizer = Adam(0.0002, beta_1=0.5, beta_2=0.999, epsilon=10e-8)
-        self.loss = ['binary_crossentropy']
+        self.loss = 'binary_crossentropy'
         self.g_model = self.gen()
         self.g_model.summary()
         self.d_model =self.dis()
         self.d_model.summary()
         self.d_model.trainable= False
-        self.rec = self.recon()
-        self.generate=self.model()
+        self.rec_model = self.recon()
+        '''
+        self.generate=self.build_consist()
+        self.generate.summary()
+        self.gan = self.build_gan()
+        '''
+        self.g_total= self.build_total()
+        self.g_total.summary()
         
+    def build_total(self):
+        img1 = Input(shape=self.img_shape)
+        img2 = Input(shape=self.img_shape)
 
-    def model(self):
+        label = self.encoder2(img2)
+        latent = self.encoder1(img1)
+        gen_img = self.g_model([latent,label])
+
+        gen_score = self.d_model([gen_img,label])
+        ######   img1 and recon image
+        re_img = self.rec_model([gen_img,img1])
+
+        total = Model([img1,img2], [gen_score,re_img])
+        total.compile(loss=[self.loss, l1_distance],optimizer=self.optimizer)
+
+        return total
+
+    def build_consist(self):
+        img1 = Input(shape=self.img_shape)
+        img2 = Input(shape=self.img_shape)
+
+        label = self.encoder2(img2)
+        latent = self.encoder1(img1)
+        gen_img = self.g_model([latent,label])
+
+        #gen_score = self.d_model([gen_img,label])
+
+        re_img = self.rec_model(gen_img)
+
+        #recon_loss= Lambda(l1_distance)([img1,re_img])
+        #self.const = Model([img1,re_img])
+        #self.const.compile(loss = l1_distance, optimizer=self.optimizer)
+        '''
+        valid = Input(shape=(1,))
+        g_loss=Lambda(bce())([valid, gen_score])
+
+        gloss = Lambda(loss)([g_loss, recon_loss])
+        '''
+        dec = Model([img1,img2], re_img)
+
+        dec.compile(loss=l1_distance, optimizer=self.optimizer)
+
+        return dec
+
+    def build_gan(self):
         img1 = Input(shape=self.img_shape)
         img2 = Input(shape=self.img_shape)
 
@@ -89,20 +141,9 @@ class DoubleCGAN():
 
         gen_score = self.d_model([gen_img,label])
 
-        re_img = self.rec(gen_img)
+        dec = Model([img1,img2], gen_score)
 
-        recon_loss= Lambda(l1_distance)([img1,re_img])
-        #self.const = Model([img1,re_img])
-        #self.const.compile(loss = l1_distance, optimizer=self.optimizer)
-
-        valid = Input(shape=(1,))
-        g_loss=Lambda(bce)([valid, gen_score])
-
-        gloss = Lambda(loss)([g_loss, recon_loss])
-
-        dec = Model([img1,img2,valid], gloss)
-
-        dec.compile(loss=ignoreLoss,optimizer=self.optimizer)
+        dec.compile(loss="binary_crossentropy", optimizer=self.optimizer)
 
         return dec
         
@@ -129,18 +170,28 @@ class DoubleCGAN():
                 label2 = self.encoder2.predict(sam_img2)
                 gen_img = self.g_model.predict([label1,label2])
 
+                #####
                 d_loss1 = self.d_model.train_on_batch([gen_img,label2],fake)
-                label_2 =self.encoder2(sam_img1)
-                d_loss2 = self.d_model.train_on_batch([sam_img1,label_2],valid) 
+                #label_2 =self.encoder2(sam_img1)
+                d_loss2 = self.d_model.train_on_batch([sam_img2,label2],valid) 
 
                 #d_loss2 = 0.5*(self.d_model.train_on_batch([sam_img1,label_2],valid) + self.d_model.train_on_batch([sam_img2,label2],valid))
 
                 d_loss = 0.5*(d_loss2+d_loss1)
-                mini= np.zeros(shape=(self.batch_size,1))
-                g_total_loss = self.generate.train_on_batch([sam_img1,sam_img2,valid], mini)
-                print ("%d [D loss: %.4f] [G loss: %.4f] " % (epoch, d_loss, g_total_loss))
-            self.sample_images(epoch,samples1,samples2)
-            self.save()
+
+                #g_loss = self.gan.train_on_batch([sam_img1,sam_img2], valid)
+                #g_rec_loss = self.generate.train_on_batch([sam_img1,sam_img2], sam_img1)
+
+                g_total_loss = self.g_total.train_on_batch([sam_img1,sam_img2],[valid,sam_img1])
+
+                print ("%d [D loss: %.4f] [G loss: %.4f] [Recon loss: %.4f] " % (epoch, d_loss,g_total_loss[0], g_total_loss[1]))
+                if i % 30 ==0:
+                    self.sample_images(epoch,samples1,samples2)
+            self.encoder1.save('encoder1.h5')
+            self.encoder2.save('encoder2.h5')
+            self.g_model.save('g.h5')
+            self.d_model.save('d.h5')
+            self.rec.save('rec.h5')
 
 
 
@@ -239,8 +290,8 @@ class DoubleCGAN():
         model = Sequential()
         const = max_norm(1.0)
         init = RandomNormal(stddev=0.02)
-        label = Input(shape=(self.label_dim,))
         image = Input(shape=self.img_shape)
+        label = Input(shape=(self.label_dim,))
         ## 1x1xn to 64x64xn
         ###################################
         row =tf.expand_dims(label,axis=1)
@@ -276,17 +327,14 @@ class DoubleCGAN():
         model = Sequential()
         const = max_norm(1.0)
         init = RandomNormal(stddev=0.02)
-        img =Input(shape=self.img_shape)
-
-        model.add(Conv2D(64, kernel_size=7, strides=1, input_shape=self.img_shape, padding="same", kernel_initializer=init, kernel_constraint=const))
-        model.add(LeakyReLU(alpha=0.2))
-        model.add(BatchNormalization(momentum=0.8))
-        model.add(Conv2D(128, kernel_size=3, strides=2,  padding="same", kernel_initializer=init, kernel_constraint=const))
-        model.add(LeakyReLU(alpha=0.2))
-        model.add(BatchNormalization(momentum=0.8))
-        model.add(Conv2D(256, kernel_size=3, strides=2, padding="same", kernel_initializer=init, kernel_constraint=const))      
-        model.add(LeakyReLU(alpha=0.2))
-        model.add(BatchNormalization(momentum=0.8))
+        img1 =Input(shape=self.img_shape)
+        img2 = Input(shape=self.img_shape)
+        label =self.encoder2(img2)
+        latent= self.encoder1(img1)
+        noise = Concatenate(axis = 1)([latent,label])
+        dep = 16
+        noise = Dense(256 * dep * dep, kernel_initializer=init, kernel_constraint=const)(noise)
+        noise= Reshape((dep, dep, 256))(noise)
 
         model.add(Conv2DTranspose(256, kernel_size=3, strides=2,padding="same", kernel_initializer=init, kernel_constraint=const))
         model.add(Activation("relu"))
@@ -300,19 +348,20 @@ class DoubleCGAN():
         model.add(Activation("relu"))
         model.add(BatchNormalization(momentum=0.8))
         
-        model.add(Conv2DTranspose(3, kernel_size=7, strides=1,padding="same", kernel_initializer=init, kernel_constraint=const))
+        model.add(Conv2DTranspose(self.channels, kernel_size=7, strides=1,padding="same", kernel_initializer=init, kernel_constraint=const))
 
        # model.add(Conv2D(self.channels, kernel_size=3, stride=1,padding="same", kernel_initializer=init, kernel_constraint=const))
         model.add(Activation("tanh"))
 
-        image = model(img)
+        image = model(noise)
 
-        return Model(img,image)
+        return Model([img1,img2],image)
     
     def sample_images(self, epoch,samples1,samples2):
         r, c = 2, 2
-        
-        gen_imgs = self.g_model.predict([samples1,samples2])
+        label1 = self.encoder1.predict(samples1)
+        label2 = self.encoder2.predict(samples2)
+        gen_imgs = self.g_model.predict([label1,label2])
         # Rescale images 0 - 1
         gen_imgs = 0.5 * gen_imgs + 0.5 
 
