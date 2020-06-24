@@ -78,11 +78,12 @@ def define_discriminator(image_shape,encoder):
 	d = InstanceNormalization(axis=-1)(d)
 	d = LeakyReLU(alpha=0.01)(d)
 	# patch output
-	patch_out = Conv2D(1, (4,4), padding='same', kernel_initializer=init)(d)
+	#d = Flatten()(d) Dense(1, activation="sigmoid")(d)
+	patch_out =Conv2D(1, (4,4), padding='same', kernel_initializer=init)(d)
 	# define model
 	model = Model([in_image,in_image_t], patch_out)
 	# compile model
-	model.compile(loss='mse', optimizer=Adam(lr=0.0002, beta_1=0.5), loss_weights=[0.5])
+	model.compile(loss='mse', optimizer=Adam(lr=0.0002, beta_1=0.5), loss_weights=[1])
 	return model
  
 
@@ -166,11 +167,11 @@ def define_composite_model(g_model_1, d_model, g_model_2, image_shape):
 	gen2_out = g_model_2([input_id,input_gen])
 	output_b = g_model_1([gen2_out,input_id])
 	# define model graph
-	model = Model([input_gen, input_id], [output_d, output_id, output_f, output_b])
+	model = Model([input_gen, input_id], [output_d,output_id , output_f, output_b])
 	# define optimization algorithm configuration
 	opt = Adam(lr=0.0002, beta_1=0.5)
 	# compile model with weighting of least squares loss and L1 loss
-	model.compile(loss=['mse', 'mae', 'mae', 'mae'], loss_weights=[1, 5, 10, 10], optimizer=opt)
+	model.compile(loss=['mse',  'mae','mae', 'mae'], loss_weights=[1, 5, 10, 10], optimizer=opt)
 	return model
  
 
@@ -182,7 +183,8 @@ def generate_real_samples(dataset, n_samples, patch_shape):
 	# retrieve selected images
 	X = dataset[ix]
 	# generate 'real' class labels (1)
-	y = ones((n_samples, patch_shape, patch_shape, 1))
+	#y = ones((n_samples,1))
+	y= ones((n_samples, patch_shape, patch_shape, 1))
 	return X, y
  
 # generate a batch of images, returns images and targets
@@ -190,6 +192,7 @@ def generate_fake_samples(g_model, datasetA, datasetB, patch_shape):
 	# generate fake instance
 	X = g_model.predict([datasetA,datasetB])
 	# create 'fake' class labels (0)
+	#y = zeros((len(X),  1))
 	y = zeros((len(X), patch_shape, patch_shape, 1))
 	return X, y
  
@@ -229,7 +232,7 @@ def summarize_performance(step, g_model, trainX, trainY, name, n_samples=5):
 	pyplot.close()
  
 # update image pool for fake images
-def update_image_pool(pool, images, max_size=50):
+def update_image_pool(pool, images, max_size=30):
 	selected = list()
 	for image in images:
 		if len(pool) < max_size:
@@ -272,12 +275,12 @@ def train(d_model_A, d_model_B, g_model_AtoB, g_model_BtoA, c_model_AtoB, c_mode
 		X_fakeA = update_image_pool(poolA, X_fakeA)
 		X_fakeB = update_image_pool(poolB, X_fakeB)
 		# update generator B->A via adversarial and cycle loss
-		g_loss2, _, _, _, _  = c_model_BtoA.train_on_batch([X_realB, X_realA], [y_realA, X_realA, X_realB, X_realA])
+		g_loss2, _, _,  _,_  = c_model_BtoA.train_on_batch([X_realB, X_realA], [y_realA, X_realA, X_realB, X_realA])
 		# update discriminator for A -> [real/fake]
 		dA_loss1 = d_model_A.train_on_batch([X_realA,X_realA], y_realA)
 		dA_loss2 = d_model_A.train_on_batch([X_fakeA,X_realA], y_fakeA)
 		# update generator A->B via adversarial and cycle loss
-		g_loss1, _, _, _, _ = c_model_AtoB.train_on_batch([X_realA, X_realB], [y_realB, X_realB, X_realA, X_realB])
+		g_loss1, _, _,  _,_ = c_model_AtoB.train_on_batch([X_realA, X_realB], [y_realB,X_realB, X_realA, X_realB])
 		# update discriminator for B -> [real/fake]
 		dB_loss1 = d_model_B.train_on_batch([X_realB,X_realB], y_realB)
 		dB_loss2 = d_model_B.train_on_batch([X_fakeB,X_realB], y_fakeB)
@@ -314,10 +317,10 @@ def Encoder(image_shape):
     model.add(Dense(64))####label a 1x1x64
     return model
     
-fear = np.load('fear.npy',allow_pickle=True)
-neutral = np.load('neutral.npy',allow_pickle=True)
-fear = fear [0:1000]
-neutral = neutral[0:1000]
+fear = np.load('fear_data.npy',allow_pickle=True)
+neutral = np.load('happy_data.npy',allow_pickle=True)
+#fear = fear [0:1000]
+#neutral = neutral[0:1000]
 
 fear = (fear.astype(np.float32) - 0.5) / 0.5
 neutral = (neutral.astype(np.float32) - 0.5) / 0.5
