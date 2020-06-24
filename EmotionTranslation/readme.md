@@ -4,3 +4,5 @@ To realize the translation from one emotion to another. It is like image mapping
 
 The basic framework is from the paper [Double Encoder Conditional GAN for Facial Expression Synthesis](https://www.researchgate.net/publication/328179213_Double_Encoder_Conditional_GAN_for_Facial_Expression_Synthesis)
 
+![alt text](https://github.com/fishfishin/procrustrean/blob/master/EmotionTranslation/AtoB_generated_plot_000800.png)
+
